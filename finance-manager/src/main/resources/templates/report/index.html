@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Reports')}"></head>
+<body>
+
+<div th:replace="~{fragments/layout :: navbar}"></div>
+
+<div class="page-body">
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+
+  <!-- Header -->
+  <div class="page-header">
+    <h4 class="page-title">Reports</h4>
+    <p class="page-subtitle">Analyse your financial data</p>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar mb-4">
+    <form th:action="@{/reports}" method="get" class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label">Report Type</label>
+        <select name="type" class="form-select" onchange="this.form.submit()">
+          <option th:each="s : ${strategies}"
+                  th:value="${s.key}"
+                  th:text="${s.name}"
+                  th:selected="${selectedType == s.key}">
+          </option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Period</label>
+        <select name="months" class="form-select" onchange="this.form.submit()">
+          <option value="3"  th:selected="${months == 3}">Last 3 months</option>
+          <option value="6"  th:selected="${months == 6}">Last 6 months</option>
+          <option value="12" th:selected="${months == 12}">Last 12 months</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-success w-100">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M23 4v6h-6M1 20v-6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Chart -->
+  <div class="card">
+    <div class="card-header d-flex align-items-center gap-3">
+      <div class="section-icon" style="background:rgba(77,138,240,.1);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+          <path d="M18 20V10M12 20V4M6 20v-6" stroke="#4d8af0" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="section-title" th:text="${result.title()}"></div>
+        <div class="section-sub">Strategy pattern — algorithm selected at runtime</div>
+      </div>
+    </div>
+    <div class="card-body chart-wrapper">
+      <div th:if="${result.data.get('labels').isEmpty()}" class="empty-state">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" display="block" style="margin:0 auto 14px;">
+          <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <p>No transaction data for the selected period</p>
+      </div>
+      <canvas th:if="${!result.data.get('labels').isEmpty()}" id="reportChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  (function() {
+    var result = /*[[${result}]]*/ {};
+    var data = result.data;
+    var chartType = result.chartType;
+    var ctx = document.getElementById('reportChart');
+
+    if (!ctx || !data || !data.labels || data.labels.length === 0) {
+      return;
+    }
+
+    Chart.defaults.color = '#8892a4';
+    Chart.defaults.borderColor = 'rgba(255,255,255,.06)';
+
+    var COLORS = ['#00d68f','#ff5c6c','#4d8af0','#f0a500','#22d3ee','#a78bfa','#fb923c','#34d399'];
+    var tooltipTheme = {
+      backgroundColor: '#1a2035',
+      borderColor: 'rgba(255,255,255,.08)',
+      borderWidth: 1,
+      titleFont: { family: 'DM Sans', size: 12 },
+      bodyFont: { family: 'JetBrains Mono', size: 12 },
+      padding: 10,
+      callbacks: {
+        label: function(context) {
+          return '  R ' + context.parsed.toLocaleString('en-ZA', {minimumFractionDigits: 2});
+        }
+      }
+    };
+
+    var chartConfig = null;
+
+    if (chartType === 'bar') {
+      chartConfig = {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [
+            { label: 'Income', data: data.income, backgroundColor: 'rgba(0,214,143,.2)', borderColor: '#00d68f', borderWidth: 2, borderRadius: 6 },
+            { label: 'Expense', data: data.expense, backgroundColor: 'rgba(255,92,108,.2)', borderColor: '#ff5c6c', borderWidth: 2, borderRadius: 6 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12, usePointStyle: true, pointStyle: 'rect' } },
+            tooltip: tooltipTheme
+          },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { font: { family: 'DM Sans', size: 11 } } },
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,.04)' },
+              ticks: {
+                font: { family: 'JetBrains Mono', size: 11 },
+                callback: function(value) { return 'R' + value.toLocaleString(); }
+              }
+            }
+          }
+        }
+      };
+    } else if (chartType === 'pie' || chartType === 'doughnut') {
+      chartConfig = {
+        type: 'doughnut',
+        data: {
+          labels: data.labels,
+          datasets: [{ data: data.amounts, backgroundColor: COLORS, borderWidth: 3, borderColor: '#131829' }]
+        },
+        options: {
+          responsive: true,
+          cutout: '60%',
+          plugins: {
+            legend: { position: 'right', labels: { font: { family: 'DM Sans', size: 12 }, padding: 14, boxWidth: 12 } },
+            tooltip: tooltipTheme
+          }
+        }
+      };
+    } else if (chartType === 'line') {
+      chartConfig = {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [
+            { label: 'Actual Spend', data: data.actual, borderColor: '#ff5c6c', backgroundColor: 'rgba(255,92,108,.08)', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#ff5c6c' },
+            { label: '3-Month Avg', data: data.rollingAvg, borderColor: '#4d8af0', borderDash: [6, 3], fill: false, tension: 0.3, pointRadius: 3, pointBackgroundColor: '#4d8af0' }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12, usePointStyle: true } },
+            tooltip: tooltipTheme
+          },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { font: { family: 'DM Sans', size: 11 } } },
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,.04)' },
+              ticks: {
+                font: { family: 'JetBrains Mono', size: 11 },
+                callback: function(value) { return 'R' + value.toLocaleString(); }
+              }
+            }
+          }
+        }
+      };
+    }
+
+    if (chartConfig) {
+      new Chart(ctx, chartConfig);
+    }
+  })();
+  /*]]>*/
+</script>
+</body>
+</html>
