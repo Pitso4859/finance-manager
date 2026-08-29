@@ -1,276 +1,251 @@
-# 💰 Personal Finance Manager
+# Finance Manager Java Desktop
 
-> A full-stack Spring Boot application demonstrating enterprise-grade software engineering practices — custom data structures, four design patterns, layered architecture, Spring Security, and comprehensive unit testing.
+Finance Manager is a Java 21 desktop application for managing personal income, expenses, budgets, dashboard metrics, and financial reports.
 
-**Tech Stack:** Java 21 · Spring Boot 3.2 · Spring Security · MySQL · Thymeleaf · JPA/Hibernate · JUnit 5 · Lombok
+The application has been redesigned from a Spring Boot web project into a Java-only desktop architecture. The user interface is written with Java Swing and the backend is written with plain Java services, repositories, security utilities, design patterns, and custom data structures.
 
----
+There is no HTML, CSS, JavaScript, Thymeleaf, Spring Boot, Lombok, JavaFX FXML, or external UI framework in the application source.
 
-## 🎯 Why This Project Exists
+## Project goals
 
-Most finance apps are CRUD wrappers. This one is engineered. Every architectural decision has a reason, and that reason is documented in the code. This project was built to demonstrate:
+The project is designed to demonstrate software engineering rather than only CRUD functionality. It focuses on:
 
-- How to apply **data structures** to real problems (not just in an interview whiteboard)
-- How **design patterns** solve concrete engineering problems
-- How to follow **SOLID principles** and the **Software Engineering process** in a real codebase
+- Clear separation between presentation, business logic, persistence, and security.
+- Java-only desktop development with Swing.
+- SOLID-oriented class responsibilities.
+- Explicit dependency construction instead of hidden framework dependency injection.
+- Secure password storage using PBKDF2WithHmacSHA256.
+- Atomic local persistence without requiring a database server.
+- Custom data structures used for meaningful finance calculations.
+- Observer and Strategy design patterns.
+- Validation at the service boundary.
+- User ownership checks for every transaction and budget operation.
+- Testable business logic independent of the GUI.
 
----
+## Technology
 
-## 🏗️ Architecture
+- Java 21
+- Java Swing and AWT
+- Java Serialization for local application state
+- Java NIO for atomic file writes
+- Java Cryptography Architecture for password hashing
+- No runtime third-party libraries
 
-```
-com.financemanager/
-├── config/              # Spring Security, app configuration
-├── controller/          # HTTP layer — thin, delegates to services
-├── datastructures/      # Custom DS implementations (see below)
-│   ├── TransactionLedger.java      ← Doubly Linked List
-│   ├── BudgetAlertHeap.java        ← Min-Heap
-│   └── CategorySpendingMap.java    ← EnumMap (O(1) aggregation)
-├── dto/                 # Request/Response objects (API contract)
-├── exception/           # Global exception handling
-├── model/               # JPA entities
-├── patterns/            # Design pattern implementations
-│   ├── observer/        ← Observer (budget alerts)
-│   ├── strategy/        ← Strategy (report generation)
-│   ├── factory/         ← Factory Method (object creation)
-│   └── decorator/       ← Decorator (validation wrapping)
-├── repository/          # Spring Data JPA interfaces
-└── service/             # Business logic layer
-    └── impl/            # Concrete implementations
-```
+Maven is included only as optional build metadata. The application can be compiled and packaged using only the JDK.
 
-**Layered Architecture (Controller → Service → Repository):**
-- Controllers handle only HTTP concerns (routing, model, view selection)
-- Services own all business logic and are transaction-managed
-- Repositories are interfaces — Spring Data generates the implementation
+## Features
 
----
+### Authentication
 
-## 📊 Custom Data Structures
+- Register a new account.
+- Validate email and password rules.
+- Hash passwords using PBKDF2 with a unique random salt.
+- Sign in and sign out using an in-memory session.
 
-### 1. `TransactionLedger` — Doubly Linked List
+### Dashboard
 
-**File:** `datastructures/TransactionLedger.java`
+- Monthly income.
+- Monthly expenses.
+- Net balance.
+- Savings rate.
+- Five most recent transactions.
+- Top expense categories.
+- Budget warnings starting at 80 percent usage.
 
-**Problem:** Transaction history needs to be traversed forward (oldest → newest for reports) *and* backward (newest → oldest for "recent activity"). An ArrayList wastes memory on resize; a singly linked list can't go backward.
+### Transactions
 
-**Solution:** Doubly linked list with sentinel-free head/tail pointers.
+- Add income and expenses.
+- Edit existing transactions.
+- Delete transactions.
+- Validate amount, date, transaction type, and category consistency.
+- Restrict access to the signed-in user's records.
 
-```java
-TransactionLedger ledger = new TransactionLedger();
-ledger.addFirst(transaction);              // O(1) — newest at head
-BigDecimal balance = ledger.computeBalance(); // O(n) — income - expense
-for (Transaction t : ledger.reverseIterable()) { ... } // newest → oldest
-```
+### Budgets
 
-| Operation    | Complexity | Reason                          |
-|--------------|------------|----------------------------------|
-| `addFirst`   | O(1)       | Only head pointer changes        |
-| `addLast`    | O(1)       | Only tail pointer changes        |
-| `removeById` | O(n)       | Must scan to find by id          |
-| `computeBalance` | O(n)   | Must visit all nodes             |
-| `size`       | O(1)       | Maintained as a counter          |
+- Create monthly expense budgets by category.
+- Edit and delete budgets.
+- Prevent duplicate category budgets for the same month and year.
+- Feed budget usage into the dashboard alert heap.
 
----
+### Reports
 
-### 2. `BudgetAlertHeap` — Min-Heap
+- Financial Summary strategy.
+- Expense Analysis strategy.
+- Category expense breakdown.
+- Monthly net trend.
+- CSV export using Java NIO.
 
-**File:** `datastructures/BudgetAlertHeap.java`
+## Application screenshots
 
-**Problem:** After saving a transaction, we need to show the user which budget categories are most at risk. Sorting all categories every time is O(k log k) per transaction. We can do better.
+The screenshots below show the Java Swing desktop interface running from the project in Visual Studio Code. They demonstrate account registration, the dashboard, transaction management, reporting, and CSV export.
 
-**Solution:** Min-Heap keyed on overspend ratio (`spent / limit`). The most over-budget category is always at the root.
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <strong>Create account</strong><br><br>
+      <img src="docs/screenshots/01-create-account.png" alt="Finance Manager create account screen" width="100%">
+    </td>
+    <td width="50%" valign="top">
+      <strong>Dashboard</strong><br><br>
+      <img src="docs/screenshots/02-dashboard.png" alt="Finance Manager dashboard" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <strong>Add transaction</strong><br><br>
+      <img src="docs/screenshots/03-add-transaction.png" alt="Add transaction dialog" width="100%">
+    </td>
+    <td width="50%" valign="top">
+      <strong>Financial report and export confirmation</strong><br><br>
+      <img src="docs/screenshots/04-report-export-complete.png" alt="Financial report with CSV export confirmation" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <strong>Reports workspace</strong><br><br>
+      <img src="docs/screenshots/05-reports-view.png" alt="Finance Manager reports workspace" width="100%">
+    </td>
+    <td width="50%" valign="top">
+      <strong>CSV export</strong><br><br>
+      <img src="docs/screenshots/06-export-csv.png" alt="CSV export save dialog" width="100%">
+    </td>
+  </tr>
+</table>
 
-```java
-BudgetAlertHeap heap = new BudgetAlertHeap();
-heap.insert(new BudgetAlert("FOOD", spent, limit, 1.25));   // O(log n)
-BudgetAlert mostUrgent = heap.peek();                        // O(1)
-List<BudgetAlert> allSorted = heap.drainAll();               // O(n log n)
-```
+<p align="center">
+  <strong>Expense transaction entry</strong>
+</p>
+<p align="center">
+  <img src="docs/screenshots/07-expense-entry.png" alt="Expense transaction entry" width="85%">
+</p>
 
-Array-backed heap: `parent(i) = (i-1)/2`, `left(i) = 2i+1`, `right(i) = 2i+2`
+## Architecture
 
----
-
-### 3. `CategorySpendingMap` — EnumMap
-
-**File:** `datastructures/CategorySpendingMap.java`
-
-**Problem:** Aggregate spending by category for the dashboard. `HashMap<Category, BigDecimal>` works, but has hashing overhead and no guaranteed iteration order.
-
-**Solution:** `EnumMap` — backed by an ordinal-indexed array. Zero hash collisions, guaranteed O(1) get/put, deterministic iteration order.
-
-```java
-CategorySpendingMap map = new CategorySpendingMap();
-map.loadFromTransactions(transactions);              // O(n)
-BigDecimal foodTotal = map.getTotal(Category.FOOD); // O(1)
-BigDecimal foodPct   = map.getPercentage(Category.FOOD); // O(1)
-List<...> top5       = map.topN(5);                 // O(k log k)
-```
-
----
-
-## 🧩 Design Patterns
-
-### 1. Observer Pattern — Budget Alert System
-
-**Files:** `patterns/observer/`
-
-**Problem:** When a transaction is saved, multiple subsystems need to react: check budgets, write audit logs, send notifications. Wiring all of this directly into `TransactionService` creates tight coupling and violates the **Single Responsibility Principle**.
-
-**Solution:** `TransactionEventPublisher` (Subject) broadcasts events to registered `TransactionObserver` implementations. New observers can be added without touching `TransactionService`.
-
-```java
-// Adding a new side effect = zero changes to existing code
-publisher.subscribe(new SMSNotificationObserver(...));  // just add an observer
-```
-
----
-
-### 2. Strategy Pattern — Report Generation
-
-**Files:** `patterns/strategy/`
-
-**Problem:** Three different report algorithms (monthly summary, category breakdown, trend analysis) would produce a messy switch statement in `ReportService`, violating the **Open/Closed Principle**.
-
-**Solution:** Each algorithm is a `ReportStrategy` implementation. `ReportController` selects one at runtime with no if/else.
-
-```java
-// Adding a new report type = zero changes to existing code
-// Just create a new class implementing ReportStrategy and annotate @Component
-```
-
----
-
-### 3. Factory Method — Transaction Creation
-
-**File:** `patterns/factory/TransactionFactory.java`
-
-**Problem:** Transaction creation involves validation (category-type consistency), field trimming, timestamp injection, and owner assignment. Doing this inline in the controller couples it to entity details.
-
-**Solution:** `TransactionFactory.createFromRequest()` centralises all creation logic and enforces business rules at the boundary.
-
-```java
-// This one line handles validation, trimming, defaults, and ownership
-Transaction tx = TransactionFactory.createFromRequest(request, user);
+```text
+Swing UI
+   |
+   v
+Application Services
+   |
+   +--> Security
+   +--> Design Patterns
+   +--> Custom Data Structures
+   |
+   v
+Repositories
+   |
+   v
+FileDataStore
+   |
+   v
+finance-manager.dat
 ```
 
----
+The GUI never reads or writes persistence data directly. UI classes call services. Services enforce validation and business rules. Repositories isolate storage access. `FileDataStore` provides locking and atomic writes.
 
-### 4. Decorator Pattern — Validated Transaction Service
+Detailed architecture is documented in `docs/ARCHITECTURE.md`.
 
-**File:** `patterns/decorator/ValidatedTransactionService.java`
+## Project structure
 
-**Problem:** We want to add pre-save validation (max amount, future dates, etc.) without modifying `TransactionServiceImpl` or subclassing it.
+```text
+src/main/java/com/financemanager
+|-- FinanceManagerApplication.java
+|-- app
+|   `-- AppServices.java
+|-- datastructures
+|   |-- BudgetAlertHeap.java
+|   |-- CategorySpendingMap.java
+|   `-- TransactionLedger.java
+|-- dto
+|-- exception
+|-- model
+|-- patterns
+|   |-- observer
+|   `-- strategy
+|-- persistence
+|-- repository
+|-- security
+|-- service
+|-- ui
+|   |-- components
+|   |-- dialogs
+|   `-- panels
+`-- util
+```
 
-**Solution:** `ValidatedTransactionService` wraps any `TransactionService` and adds validation before delegating — just like Java's `BufferedReader` wraps `FileReader`.
+## Run with the JDK only
 
----
+Requirements:
 
-## 🔒 Software Engineering Practices
+- JDK 21 or newer
 
-### SOLID Principles in Action
-
-| Principle | Where Applied |
-|-----------|--------------|
-| **S** — Single Responsibility | Controllers handle HTTP only. Services own business logic. Factories own creation. |
-| **O** — Open/Closed | New report types via Strategy. New observers via Observer. No existing code modified. |
-| **L** — Liskov Substitution | `TransactionServiceImpl` can be swapped with any `TransactionService` implementation. |
-| **I** — Interface Segregation | `TransactionService` defines only what clients need — no fat interfaces. |
-| **D** — Dependency Inversion | Controllers depend on `TransactionService` interface, not `TransactionServiceImpl`. |
-
-### Security
-- BCrypt password hashing with cost factor 12
-- CSRF protection enabled
-- Route-level authorization (`@PreAuthorize`, `SecurityFilterChain`)
-- Ownership validation before every read/write (`findByIdAndUser`)
-- No sensitive data in `application.properties` (use env variables in production)
-
-### Data Integrity
-- `BigDecimal` for all monetary values (never `float`/`double`)
-- `@Valid` + Bean Validation on all DTOs
-- Database-level unique constraints and indexes
-- `@Transactional` on all write operations
-- Read-only transactions for queries (performance)
-
-### Error Handling
-- `GlobalExceptionHandler` — centralised, no stack traces to the user
-- Meaningful exception messages at every layer
-- PRG pattern (Post-Redirect-Get) on all forms — prevents duplicate submissions
-
----
-
-## 🧪 Testing
+From the project root:
 
 ```bash
-mvn test
+mkdir -p out/main
+find src/main/java -name "*.java" > sources.txt
+javac --release 21 -d out/main @sources.txt
+java -cp out/main com.financemanager.FinanceManagerApplication
 ```
 
-Tests cover:
-- `TransactionLedger` — all linked list operations and edge cases
-- `BudgetAlertHeap` — heap property, priority ordering, flag correctness
-- `TransactionFactory` — field mapping, whitespace trimming, invalid combos
+On Windows PowerShell:
 
-```
-TransactionLedgerTest     ✅ 7 tests
-BudgetAlertHeapTest       ✅ 5 tests
-TransactionFactoryTest    ✅ 4 tests
+```powershell
+New-Item -ItemType Directory -Force out\main | Out-Null
+Get-ChildItem -Recurse src\main\java -Filter *.java | ForEach-Object FullName | Set-Content sources.txt
+javac --release 21 -d out\main '@sources.txt'
+java -cp out\main com.financemanager.FinanceManagerApplication
 ```
 
----
-
-## 🚀 Running Locally
-
-### Prerequisites
-- Java 21+
-- Maven 3.9+
-- MySQL 8+
-
-### Steps
+A prebuilt runnable JAR is also included in the distribution folder:
 
 ```bash
-# 1. Clone
-git clone https://github.com/Pitso4859/finance-manager.git
-cd finance-manager
-
-# 2. Create database
-mysql -u root -p -e "CREATE DATABASE finance_manager;"
-
-# 3. Set your credentials in application.properties
-spring.datasource.username=root
-spring.datasource.password=your_password
-
-# 4. Run
-mvn spring-boot:run
-
-# 5. Open
-http://localhost:8080/auth/register
+java -jar dist/finance-manager-java.jar
 ```
 
----
+## Local data
 
-## 📐 Database Schema
+By default the application stores data in:
 
-```
-users
-  id, full_name, email (unique), password, role, enabled, created_at
-
-transactions
-  id, description, amount, type, category, transaction_date, notes, created_at, user_id
-  INDEX: (user_id, transaction_date)   ← optimises date range queries
-  INDEX: (category)                    ← optimises category aggregation
-
-budgets
-  id, category, limit_amount, month, year, user_id
-  UNIQUE: (user_id, category, month, year)
+```text
+Windows: C:\Users\<username>\.finance-manager\
+Linux:   /home/<username>/.finance-manager/
+macOS:   /Users/<username>/.finance-manager/
 ```
 
----
+Files:
 
-## 👤 Author
+- `finance-manager.dat` contains serialized application state.
+- `audit.log` records transaction create, update, and delete events.
 
-**Pitso Nkotolane** — Full-Stack Developer & Software Engineer  
-📧 pitso@nkotolane.dev  
-🌐 [nkotolane-pitso-portfolio.vercel.app](https://nkotolane-pitso-portfolio.vercel.app)  
-💼 [LinkedIn](https://linkedin.com/in/pitso-nkotolane)  
-🐙 [GitHub](https://github.com/Pitso4859)
+A different data directory can be supplied at runtime:
+
+```bash
+java -Dfinance.manager.data.dir=/path/to/data -jar dist/finance-manager-java.jar
+```
+
+## Testing
+
+Tests deliberately avoid third-party testing libraries so the repository remains runtime-dependency-free.
+
+Compile and run:
+
+```bash
+mkdir -p out/main out/test
+find src/main/java -name "*.java" > main-sources.txt
+javac --release 21 -d out/main @main-sources.txt
+find src/test/java -name "*.java" > test-sources.txt
+javac --release 21 -cp out/main -d out/test @test-sources.txt
+java -ea -cp out/main:out/test com.financemanager.CoreSmokeTest
+java -ea -cp out/main:out/test com.financemanager.ServiceIntegrationTest
+```
+
+## Engineering documentation
+
+- `docs/ENGINEERING_PLAN.md` explains the redesign plan and technical decisions.
+- `docs/ARCHITECTURE.md` documents layers, data flow, patterns, security, persistence, and performance.
+- `docs/DEVELOPER_GUIDE.md` explains how another developer should extend and maintain the application.
+
+## Production considerations
+
+This design is intentionally optimized for a portfolio-quality local desktop application with no external runtime dependencies. For a multi-user enterprise deployment, replace `FileDataStore` with a relational database repository implementation, add database migrations, centralized identity, encrypted secrets, structured logging, automated JUnit tests, CI/CD, and application packaging/signing.

@@ -1,5 +1,8 @@
 target/
-
-*.iws
-*.ipr
+out/
+*.class
+*.log
+.idea/
 .vscode/
+.finance-manager/
+finance-manager.dat
