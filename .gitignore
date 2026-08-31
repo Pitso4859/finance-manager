@@ -1,8 +1,26 @@
+# Java build output
 target/
 out/
+build/
+dist/
 *.class
-*.log
-.idea/
-.vscode/
+
+# Packaging output
+release/
+package-input/
+*.exe
+*.msi
+
+# Application runtime data
 .finance-manager/
 finance-manager.dat
+*.log
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db

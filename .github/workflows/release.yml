@@ -1,0 +1,97 @@
+name: Windows Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Validate release version
+        shell: pwsh
+        run: |
+          $projectVersion = (mvn help:evaluate "-Dexpression=project.version" -q -DforceStdout).Trim()
+          $tagVersion = "${{ github.ref_name }}".TrimStart("v")
+          if ($projectVersion -ne $tagVersion) {
+            throw "Tag version $tagVersion does not match pom.xml version $projectVersion."
+          }
+          "APP_VERSION=$projectVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build application
+        run: mvn --batch-mode --no-transfer-progress clean test-compile package
+
+      - name: Run tests
+        shell: pwsh
+        run: |
+          java -ea -cp "target\classes;target\test-classes" com.financemanager.CoreSmokeTest
+          if ($LASTEXITCODE -ne 0) { throw "CoreSmokeTest failed." }
+          java -ea -cp "target\classes;target\test-classes" com.financemanager.ServiceIntegrationTest
+          if ($LASTEXITCODE -ne 0) { throw "ServiceIntegrationTest failed." }
+
+      - name: Install WiX Toolset 3
+        shell: pwsh
+        run: choco install wixtoolset --version=3.14.1.20250415 --no-progress -y
+
+      - name: Create Windows installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force package-input, release | Out-Null
+          Copy-Item "target\finance-manager-java-$env:APP_VERSION.jar" "package-input\finance-manager-java.jar"
+
+          jpackage `
+            --type exe `
+            --name "Finance Manager" `
+            --input "package-input" `
+            --main-jar "finance-manager-java.jar" `
+            --main-class "com.financemanager.FinanceManagerApplication" `
+            --app-version "$env:APP_VERSION" `
+            --vendor "Nkotolane Pitso" `
+            --description "Personal finance management desktop application" `
+            --win-menu `
+            --win-menu-group "Finance Manager" `
+            --win-shortcut `
+            --win-dir-chooser `
+            --win-per-user-install `
+            --dest "release"
+
+          if ($LASTEXITCODE -ne 0) { throw "jpackage failed." }
+          Copy-Item "target\finance-manager-java-$env:APP_VERSION.jar" "release\finance-manager-java-$env:APP_VERSION.jar"
+
+      - name: Upload release build
+        uses: actions/upload-artifact@v7
+        with:
+          name: finance-manager-${{ github.ref_name }}
+          path: release/*
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = @"
+          Finance Manager $env:APP_VERSION
+
+          Windows desktop release built with Java 21.
+
+          Download the EXE installer for the easiest installation. The runnable JAR is included for users who already have Java 21 or newer installed.
+          "@
+          $notes | Set-Content RELEASE_NOTES.md
+          $assets = @(Get-ChildItem release -File | ForEach-Object FullName)
+          gh release create "${{ github.ref_name }}" @assets --verify-tag --title "Finance Manager $env:APP_VERSION" --notes-file RELEASE_NOTES.md

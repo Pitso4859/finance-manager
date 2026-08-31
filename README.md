@@ -2,6 +2,14 @@
 
 Finance Manager is a Java 21 desktop application for managing personal income, expenses, budgets, dashboard metrics, and financial reports.
 
+## Download and deployment
+
+Windows releases are generated automatically with GitHub Actions and `jpackage`. The release contains a native Windows installer with a bundled Java runtime plus a runnable JAR.
+
+[Download the latest release](../../releases/latest)
+
+To deploy a new release, push a version tag matching `pom.xml`, for example `v2.0.0`. See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the complete commit and release workflow.
+
 The application has been redesigned from a Spring Boot web project into a Java-only desktop architecture. The user interface is written with Java Swing and the backend is written with plain Java services, repositories, security utilities, design patterns, and custom data structures.
 
 There is no HTML, CSS, JavaScript, Thymeleaf, Spring Boot, Lombok, JavaFX FXML, or external UI framework in the application source.
@@ -197,11 +205,19 @@ javac --release 21 -d out\main '@sources.txt'
 java -cp out\main com.financemanager.FinanceManagerApplication
 ```
 
-A prebuilt runnable JAR is also included in the distribution folder:
+For a one-command build on Windows PowerShell:
 
-```bash
-java -jar dist/finance-manager-java.jar
+```powershell
+.\scripts\build.ps1
 ```
+
+Run the generated JAR with:
+
+```powershell
+.\scripts\run.ps1
+```
+
+The build script creates `dist/finance-manager-java.jar`. Generated build and installer files are intentionally excluded from Git and are published through GitHub Releases instead.
 
 ## Local data
 
@@ -245,6 +261,15 @@ java -ea -cp out/main:out/test com.financemanager.ServiceIntegrationTest
 - `docs/ENGINEERING_PLAN.md` explains the redesign plan and technical decisions.
 - `docs/ARCHITECTURE.md` documents layers, data flow, patterns, security, persistence, and performance.
 - `docs/DEVELOPER_GUIDE.md` explains how another developer should extend and maintain the application.
+
+## Automated build and release
+
+- `.github/workflows/ci.yml` builds and tests every push and pull request to `main` or `master`.
+- `.github/workflows/release.yml` creates a Windows installer when a matching `v*` tag is pushed.
+- `scripts/build.ps1` builds and tests the project locally with only JDK 21.
+- `scripts/package-windows.ps1` creates the Windows installer locally with `jpackage` and WiX Toolset 3.
+
+Full deployment instructions are in [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 ## Production considerations
 
